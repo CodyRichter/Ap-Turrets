@@ -1,10 +1,14 @@
 package com.snowleopard1863.APTurrets;
 
 
+import com.sk89q.worldguard.bukkit.WGBukkit;
+import com.sk89q.worldguard.protection.managers.RegionManager;
 import net.countercraft.movecraft.craft.Craft;
 import net.countercraft.movecraft.craft.CraftManager;
 import net.countercraft.movecraft.utils.MovecraftLocation;
 import net.milkbowl.vault.economy.Economy;
+import net.minecraft.server.v1_10_R1.EntityPlayer;
+import net.minecraft.server.v1_10_R1.EntityTippedArrow;
 import net.minecraft.server.v1_10_R1.PacketPlayOutEntityDestroy;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -38,15 +42,9 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.util.Vector;
-
-import com.sk89q.worldguard.bukkit.WGBukkit;
-import com.sk89q.worldguard.protection.managers.RegionManager;
-import com.sk89q.worldguard.protection.regions.ProtectedRegion;
-import com.sk89q.worldguard.protection.ApplicableRegionSet;
-
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -71,7 +69,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         //Basic Setup
-        Plugin p = this;
+        final Plugin p = this;
         logger.info(pdfile.getName() + " v" + pdfile.getVersion() + " has been enbaled.");
         getServer().getPluginManager().registerEvents(this, this);
         //
@@ -136,10 +134,11 @@ public final class TurretsMain extends JavaPlugin implements Listener {
         if (useParticleTracers) {
             getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
                 public void run() {
-                    for (Arrow a : tracedArrows) {
+                    for (Iterator<Arrow> iterator = tracedArrows.iterator(); iterator.hasNext(); ) {
+                        Arrow a = iterator.next();
                         if (a.isOnGround() || a.isDead() || a.getTicksLived() > 100) {
                             a.removeMetadata("tracer", p);
-                            tracedArrows.remove(a);
+                            iterator.remove();
                             a.remove();
                         }
                         World world = a.getWorld();
@@ -341,7 +340,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
     }
 
 
-    public void fireTurret(Player player) {
+    public void fireTurret(final Player player) {
         if (player.isGliding()) {
             demount(player, player.getLocation());
             return;
@@ -359,7 +358,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
             if (Debug) logger.info(player + " is out of ammo");
             return;
         }
-        Arrow arrow = player.launchProjectile(Arrow.class);
+        Arrow arrow = launchArrow(player);
         arrow.setShooter(player);
         arrow.setVelocity(player.getLocation().getDirection().multiply(arrowVelocity));
         arrow.setBounce(false);
@@ -385,6 +384,17 @@ public final class TurretsMain extends JavaPlugin implements Listener {
         world.playEffect(player.getLocation(), Effect.MOBSPAWNER_FLAMES, 0);
 
         if (Debug) logger.info("Mounted Gun Fired.");
+    }
+
+    private Arrow launchArrow(Player bukkitPlayer) {
+        EntityPlayer player = ((CraftPlayer) bukkitPlayer).getHandle();
+        net.minecraft.server.v1_10_R1.World world = player.getWorld();
+        EntityTippedArrow arrow = new EntityTippedArrow(world, player);
+
+        arrow.setNoGravity(true);
+        world.addEntity(arrow);
+
+        return (Arrow) arrow.getBukkitEntity();
     }
 
     @EventHandler

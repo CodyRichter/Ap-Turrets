@@ -1,3 +1,6 @@
 main: com.snowleopard1863.APTurrets.TurretsMain
 version: 2.2.0
 name: APTurrets
+
+depend: [Movecraft, WorldGuard]
+softdepend: [Vault]
