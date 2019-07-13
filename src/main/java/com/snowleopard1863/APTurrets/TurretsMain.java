@@ -7,15 +7,12 @@ import net.countercraft.movecraft.craft.Craft;
 import net.countercraft.movecraft.craft.CraftManager;
 import net.countercraft.movecraft.utils.MovecraftLocation;
 import net.milkbowl.vault.economy.Economy;
-import net.minecraft.server.v1_10_R1.EntityPlayer;
-import net.minecraft.server.v1_10_R1.EntityTippedArrow;
-import net.minecraft.server.v1_10_R1.PacketPlayOutEntityDestroy;
+import net.minecraft.server.v1_12_R1.PacketPlayOutEntityDestroy;
 import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.block.Sign;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.craftbukkit.v1_10_R1.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_12_R1.entity.CraftPlayer;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Horse;
@@ -44,7 +41,6 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -132,18 +128,15 @@ public final class TurretsMain extends JavaPlugin implements Listener {
 
 
         if (useParticleTracers) {
-            getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
-                public void run() {
-                    for (Iterator<Arrow> iterator = tracedArrows.iterator(); iterator.hasNext(); ) {
-                        Arrow a = iterator.next();
-                        if (a.isOnGround() || a.isDead() || a.getTicksLived() > 100) {
-                            a.removeMetadata("tracer", p);
-                            iterator.remove();
-                            a.remove();
-                        }
-                        World world = a.getWorld();
-                        world.spawnParticle(Particle.CRIT, a.getLocation(), 3, 0.0, 0.0, 0.0, 0);
+            getServer().getScheduler().scheduleSyncRepeatingTask(this, () -> {
+                for (Arrow a : tracedArrows) {
+                    if (a.isOnGround() || a.isDead() || a.getTicksLived() > 100) {
+                        a.removeMetadata("tracer", p);
+                        tracedArrows.remove(a);
+                        a.remove();
                     }
+                    World world = a.getWorld();
+                    world.spawnParticle(Particle.CRIT, a.getLocation(), 3, 0.0, 0.0, 0.0, 0);
                 }
             }, 0, 0);
         }
@@ -223,6 +216,8 @@ public final class TurretsMain extends JavaPlugin implements Listener {
                         Location signPos = event.getClickedBlock().getLocation();
                         signPos.setPitch(event.getPlayer().getLocation().getPitch());
                         signPos.setDirection(event.getPlayer().getVelocity());
+                        if (!sign.getLine(0).equals("Mounted")) sign.setLine(0,"Mounted");
+                        if (!sign.getLine(1).equals("Gun")) sign.setLine(1,"Gun");
                         mount(event.getPlayer(), signPos);
                     }
                 }
@@ -340,17 +335,13 @@ public final class TurretsMain extends JavaPlugin implements Listener {
     }
 
 
-    public void fireTurret(final Player player) {
+    private void fireTurret(final Player player) {
         if (player.isGliding()) {
             demount(player, player.getLocation());
             return;
         }
         reloading.add(player);
-        Bukkit.getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
-            public void run() {
-                reloading.remove(player);
-            }
-        }, (int) (delayBetweenShots * 10));
+        Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> reloading.remove(player), (int) (delayBetweenShots * 10));
         boolean hasAmmoBeenTaken;
         hasAmmoBeenTaken = !requireAmmo || takeAmmo(player);
         if (!hasAmmoBeenTaken) {
@@ -358,7 +349,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
             if (Debug) logger.info(player + " is out of ammo");
             return;
         }
-        Arrow arrow = launchArrow(player);
+        Arrow arrow = player.launchProjectile(Arrow.class);
         arrow.setShooter(player);
         arrow.setVelocity(player.getLocation().getDirection().multiply(arrowVelocity));
         arrow.setBounce(false);
@@ -384,17 +375,6 @@ public final class TurretsMain extends JavaPlugin implements Listener {
         world.playEffect(player.getLocation(), Effect.MOBSPAWNER_FLAMES, 0);
 
         if (Debug) logger.info("Mounted Gun Fired.");
-    }
-
-    private Arrow launchArrow(Player bukkitPlayer) {
-        EntityPlayer player = ((CraftPlayer) bukkitPlayer).getHandle();
-        net.minecraft.server.v1_10_R1.World world = player.getWorld();
-        EntityTippedArrow arrow = new EntityTippedArrow(world, player);
-
-        arrow.setNoGravity(true);
-        world.addEntity(arrow);
-
-        return (Arrow) arrow.getBukkitEntity();
     }
 
     @EventHandler
@@ -472,7 +452,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
         }
     }
 
-    public void mount(Player player, Location signPos) {
+    private void mount(Player player, Location signPos) {
         if (signPos.getBlock().getType() == Material.SIGN || signPos.getBlock().getType() == Material.SIGN_POST
                 || signPos.getBlock().getType() == Material.WALL_SIGN) {
             if (Debug) {
@@ -503,7 +483,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
         }
     }
 
-    public void demount(Player player, Location signPos) {
+    private void demount(Player player, Location signPos) {
         if (Debug) {
             logger.info(player.getName() + " is being taken off a turret");
         }
@@ -530,7 +510,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
         demount(e.getPlayer(), e.getPlayer().getLocation());
     }
 
-    public void sendMessage(Player p, String message) {
+    private void sendMessage(Player p, String message) {
         p.sendMessage(ChatColor.GRAY + "[" + ChatColor.DARK_RED + "APTurrets" + ChatColor.GRAY + "] " + ChatColor.WHITE + message);
     }
 
@@ -547,7 +527,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
      * @param player Player Who Is Having Ammo Thier Ammo Taken
      * @return Ammo Successfully Taken
      */
-    public boolean takeAmmo(Player player) {
+    private boolean takeAmmo(Player player) {
         if (takeFromChest) {
             Block signBlock = player.getLocation().getBlock();
             if (signBlock.getType() == Material.WALL_SIGN || signBlock.getType() == Material.SIGN_POST) {
@@ -592,21 +572,11 @@ public final class TurretsMain extends JavaPlugin implements Listener {
      * @param block Block That You Are Checking For Support
      * @return Block That Is Supporting
      */
-    public static Block getBlockSignAttachedTo(Block block) {
-        if (block.getType().equals(Material.SIGN_POST))
-            return block.getRelative(BlockFace.DOWN);
-
-        if (block.getType().equals(Material.WALL_SIGN))
-            switch (block.getData()) {
-                case 2:
-                    return block.getRelative(BlockFace.SOUTH);
-                case 3:
-                    return block.getRelative(BlockFace.NORTH);
-                case 4:
-                    return block.getRelative(BlockFace.EAST);
-                case 5:
-                    return block.getRelative(BlockFace.WEST);
-            }
+    private static Block getBlockSignAttachedTo(Block block) {
+        if (block.getType() == Material.SIGN_POST || block.getType() == Material.WALL_SIGN) {
+            org.bukkit.material.Sign s = (org.bukkit.material.Sign) block.getState().getData();
+            return block.getRelative(s.getAttachedFace());
+        }
         return null;
     }
 
@@ -617,7 +587,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
      * @param world        World The Craft Is In
      * @return Location Object
      */
-    public static Location movecraftLocationToBukkitLocation(MovecraftLocation movecraftLoc, World world) {
+    private static Location movecraftLocationToBukkitLocation(MovecraftLocation movecraftLoc, World world) {
         return new Location(world, movecraftLoc.getX(), movecraftLoc.getY(), movecraftLoc.getZ());
     }
 
@@ -629,7 +599,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
      * @return the converted location
      */
     public static ArrayList<Location> movecraftLocationToBukkitLocation(List<MovecraftLocation> movecraftLocations, World world) {
-        ArrayList<Location> locations = new ArrayList<Location>();
+        ArrayList<Location> locations = new ArrayList<>();
         for (MovecraftLocation movecraftLoc : movecraftLocations) {
             locations.add(movecraftLocationToBukkitLocation(movecraftLoc, world));
         }
@@ -643,8 +613,8 @@ public final class TurretsMain extends JavaPlugin implements Listener {
      * @param world              the world of the location
      * @return the converted location
      */
-    public static ArrayList<Location> movecraftLocationToBukkitLocation(MovecraftLocation[] movecraftLocations, World world) {
-        ArrayList<Location> locations = new ArrayList<Location>();
+    private static ArrayList<Location> movecraftLocationToBukkitLocation(MovecraftLocation[] movecraftLocations, World world) {
+        ArrayList<Location> locations = new ArrayList<>();
         for (MovecraftLocation movecraftLoc : movecraftLocations) {
             locations.add(movecraftLocationToBukkitLocation(movecraftLoc, world));
         }
@@ -665,7 +635,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
      * @param lookup the materials to compare against while scanning
      * @return the first inventory matching a lookup material on the craft
      */
-    public static Inventory firstInventory(Craft craft, ItemStack item, Material... lookup){
+    private static Inventory firstInventory(Craft craft, ItemStack item, Material... lookup){
         if(craft == null)
             throw new IllegalArgumentException("craft must not be null");
 
