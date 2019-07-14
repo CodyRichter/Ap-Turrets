@@ -1,4 +1,4 @@
-main: com.snowleopard1863.APTurrets.TurretsMain
+main: com.snowleopard1863.APTurrets.Main
 version: 2.2.0
 name: APTurrets
 description: Allows for player-mounted turrets with support for Movecraft and Worldguard

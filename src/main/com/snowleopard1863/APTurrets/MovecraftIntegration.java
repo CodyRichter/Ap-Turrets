@@ -13,7 +13,7 @@ import org.bukkit.inventory.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.snowleopard1863.APTurrets.TurretsMain.TURRET_AMMO;
+import static com.snowleopard1863.APTurrets.Main.TURRET_AMMO;
 
 public class MovecraftIntegration {
     /**

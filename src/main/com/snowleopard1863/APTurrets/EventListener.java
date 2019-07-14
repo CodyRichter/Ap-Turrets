@@ -1,16 +1,10 @@
 package com.snowleopard1863.APTurrets;
 
-
 import com.sk89q.worldguard.bukkit.WGBukkit;
 import com.sk89q.worldguard.protection.managers.RegionManager;
-import net.countercraft.movecraft.craft.CraftManager;
-import net.milkbowl.vault.economy.Economy;
-import net.minecraft.server.v1_12_R1.PacketPlayOutEntityDestroy;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.craftbukkit.v1_12_R1.entity.CraftPlayer;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Horse;
@@ -27,120 +21,21 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.PluginDescriptionFile;
-import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.logging.Logger;
+import static com.snowleopard1863.APTurrets.Main.*;
+import static com.snowleopard1863.APTurrets.Util.*;
+import static com.snowleopard1863.APTurrets.Util.demountTurret;
+import static com.snowleopard1863.APTurrets.Util.sendMessage;
 
-import static com.snowleopard1863.APTurrets.Helpers.sendMessage;
-import static com.snowleopard1863.APTurrets.Helpers.setupConfig;
-import static com.snowleopard1863.APTurrets.Helpers.takeAmmo;
+public class EventListener implements Listener {
 
-public final class TurretsMain extends JavaPlugin implements Listener {
-    private PluginDescriptionFile pdFile = getDescription();
-    private Logger logger = Logger.getLogger("Minecraft");
-    private static List<Player> onTurrets = new ArrayList<>();
-    private static List<Player> reloading = new ArrayList<>();
-    private static List<Arrow> tracedArrows = new CopyOnWriteArrayList<>();
-    static boolean Debug = false;
-    static boolean takeFromInventory, takeFromChest, requireAmmo;
-    static double costToPlace, damage, incendiaryChance, arrowVelocity;
-    static int knockbackStrength;
-    static boolean useParticleTracers;
-    static double delayBetweenShots;
+    private JavaPlugin plugin;
 
-    //Plugin integration:
-    static Economy economy; //Vault Economy
-    static CraftManager craftManager; //Movecraft
-
-    private static final Material[] INVENTORY_MATERIALS = new Material[]{Material.CHEST, Material.TRAPPED_CHEST,
-            Material.FURNACE, Material.HOPPER, Material.DROPPER, Material.DISPENSER, Material.BREWING_STAND};
-    static final ItemStack TURRET_AMMO = new ItemStack(Material.ARROW, 1);
-
-    @Override
-    public void onEnable() {
-        //Basic Setup
-        final Plugin p = this;
-        logger.info(pdFile.getName() + " v" + pdFile.getVersion() + " has been enbaled.");
-        getServer().getPluginManager().registerEvents(this, this);
-
-        setupConfig(this);
-
-        //
-        // Vault Support
-        //
-        if (getServer().getPluginManager().getPlugin("Vault") != null) {
-            RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager().getRegistration(Economy.class);
-            if (rsp != null) {
-                economy = rsp.getProvider();
-                logger.info("Found a compatible Vault plugin.");
-            } else {
-                logger.info("[WARNING] Could not find compatible Vault plugin. Disabling Vault integration.");
-                economy = null;
-            }
-        } else {
-            logger.info("Could not find compatible Vault plugin. Disabling Vault integration.");
-            economy = null;
-        }
-
-        //
-        // Movecraft Support
-        //
-        if (getServer().getPluginManager().getPlugin("Movecraft") != null) {
-            craftManager = CraftManager.getInstance();
-            logger.info("Compatible Version Of Movecraft Found.");
-        } else {
-            logger.info("[WARNING] Could not find compatible Movecraft Version... Disabling");
-            craftManager = null;
-        }
-
-
-        if (useParticleTracers) {
-            // Schedule task to run in background that replaced the vanilla arrow tracers with an accurate trail
-            // that reflects the arrows true trajectory. The vanilla trajectory isn't accurate for sufficiently
-            // high arrows speeds so we must compensate for it directly.
-            getServer().getScheduler().scheduleSyncRepeatingTask(this, () -> {
-                for (Arrow a : tracedArrows) {
-                    if (a.isOnGround() || a.isDead() || a.getTicksLived() > 100) {
-                        a.removeMetadata("tracer", p);
-                        tracedArrows.remove(a);
-                        a.remove();
-                    }
-                    World world = a.getWorld();
-                    world.spawnParticle(Particle.CRIT, a.getLocation(), 3, 0.0, 0.0, 0.0, 0);
-                }
-            }, 0, 0);
-        }
-
+    EventListener(JavaPlugin plugin) {
+        this.plugin = plugin;
     }
-
-    @Override
-    public void onLoad() {
-        super.onLoad();
-        logger = getLogger();
-    }
-
-    @Override
-    public void onDisable() {
-        for (Player player : onTurrets) { //Demount all players in turrets
-            demount(player, player.getLocation());
-            onTurrets.remove(player);
-        }
-        reloading.clear();
-        tracedArrows.clear();
-        logger.info(pdFile.getName() + " v" + pdFile.getVersion() + " has been disabled.");
-    }
-
 
     @EventHandler
     public void onClick(PlayerInteractEvent event) {
@@ -199,7 +94,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
                         signPos.setDirection(event.getPlayer().getVelocity());
                         if (!sign.getLine(0).equals("Mounted")) sign.setLine(0,"Mounted");
                         if (!sign.getLine(1).equals("Gun")) sign.setLine(1,"Gun");
-                        mount(event.getPlayer(), signPos);
+                        mountTurret(event.getPlayer(), signPos);
                     }
                 }
             }
@@ -247,31 +142,31 @@ public final class TurretsMain extends JavaPlugin implements Listener {
     public void onEntityInteract(PlayerInteractEntityEvent e) {
         Player p = e.getPlayer();
         if (onTurrets.contains(p) && (e.getRightClicked() instanceof Boat || e.getRightClicked() instanceof Horse)) {
-            demount(p, p.getLocation());
+            demountTurret(p, p.getLocation());
             if (Debug) logger.info("Player: " + p.getName() + "Has Mounted An Entity.");
         }
     }
 
 
-    
+
     @EventHandler
     public void eventSignChanged(SignChangeEvent event) {
         //get player who placed the sign
         Player player = event.getPlayer();
-        Plugin wg = getServer().getPluginManager().getPlugin("WorldGuard");
+        Plugin wg = plugin.getServer().getPluginManager().getPlugin("WorldGuard");
         Location location = player.getLocation();
         RegionManager rm = WGBukkit.getRegionManager(player.getWorld());
         //check if the sign matches the cases for a turret
         if ("Mounted".equalsIgnoreCase(event.getLine(0)) && "Gun".equalsIgnoreCase(event.getLine(1))) {
-        	if (rm.getApplicableRegions(location).size() <= 0) {
-        		   sendMessage(player,"You must be inside a airspace or region.");
-                   event.setCancelled(true);
-                   if (Debug) {
-                       logger.info("A Mounted Gun sign failed to place");
-                   }
-                   return;
+            if (rm.getApplicableRegions(location).size() <= 0) {
+                sendMessage(player,"You must be inside a airspace or region.");
+                event.setCancelled(true);
+                if (Debug) {
+                    logger.info("A Mounted Gun sign failed to place");
+                }
+                return;
 
-        	}
+            }
             //check if player has permission to place a turret, than check if they have enough money to place the sign
             if (player.hasPermission("ap-turrets.place")) {
                 if (economy != null) {
@@ -289,7 +184,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
                             logger.info("A Mounted Gun sign failed to place");
                         }
                         //if false, clear the sign and return a permission error
-                       
+
                         sendMessage(player, "You Don't Have Enough Money To Place A Turret. Cost To Place: " + ChatColor.RED + costToPlace);
                     }
                 } else {
@@ -309,50 +204,6 @@ public final class TurretsMain extends JavaPlugin implements Listener {
         }
     }
 
-
-    private void fireTurret(final Player player) {
-        if (player.isGliding()) {
-            demount(player, player.getLocation());
-            return;
-        }
-        reloading.add(player);
-        Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> reloading.remove(player), (int) (delayBetweenShots * 10));
-        boolean hasAmmoBeenTaken;
-        hasAmmoBeenTaken = !requireAmmo || takeAmmo(player);
-        if (!hasAmmoBeenTaken) {
-            player.getWorld().playSound(player.getLocation(), Sound.BLOCK_DISPENSER_FAIL, 1, 2);
-            if (Debug) logger.info(player + " is out of ammo");
-            return;
-        }
-        Arrow arrow = player.launchProjectile(Arrow.class);
-        arrow.setShooter(player);
-        arrow.setVelocity(player.getLocation().getDirection().multiply(arrowVelocity));
-        arrow.setBounce(false);
-        arrow.setMetadata("isTurretBullet", new FixedMetadataValue(this, true));
-        arrow.setKnockbackStrength(knockbackStrength);
-        double rand = Math.random();
-        if (rand <= incendiaryChance) {
-            arrow.setFireTicks(500);
-        }
-        if (useParticleTracers) {
-            arrow.setMetadata("tracer", new FixedMetadataValue(this, true));
-            tracedArrows.add(arrow);
-            arrow.setCritical(false);
-
-            PacketPlayOutEntityDestroy packet = new PacketPlayOutEntityDestroy(arrow.getEntityId());
-            for (Player p : getServer().getOnlinePlayers()) {
-                ((CraftPlayer) p).getHandle().playerConnection.sendPacket(packet);
-            }
-        } else {
-            arrow.setCritical(true);
-        }
-        World world = player.getWorld();
-        world.playSound(player.getLocation(), Sound.ENTITY_FIREWORK_BLAST, 1, 2);
-        world.playEffect(player.getLocation(), Effect.MOBSPAWNER_FLAMES, 0);
-
-        if (Debug) logger.info("Mounted Gun Fired.");
-    }
-
     @EventHandler
     public void onPlayerToggleSneakEvent(PlayerToggleSneakEvent event) {
         Player player = event.getPlayer();
@@ -360,7 +211,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
             logger.info(player + " sneaked");
         }
         if (player.isSneaking() && onTurrets.contains(player)) {
-            demount(player, player.getLocation());
+            demountTurret(player, player.getLocation());
             if (Debug) {
                 logger.info(player + " got out of their turret");
             }
@@ -379,7 +230,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
                 Location arrowLoc = arrow.getLocation();
                 World world = event.getEntity().getWorld();
                 Location l = arrowLoc.getBlock().getLocation();
-                arrow.getWorld().playEffect(arrowLoc,Effect.STEP_SOUND,1);
+                arrow.getWorld().playEffect(arrowLoc, Effect.STEP_SOUND,1);
 
             }
         }
@@ -400,7 +251,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
                 if (Debug) {
                     logger.info("on a turret");
                 }
-                demount(player, player.getLocation());
+                demountTurret(player, player.getLocation());
             }
 
             if (event.getEntity().hasMetadata("isTurretBullet")) {
@@ -411,7 +262,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
             }
         }
     }
-    
+
     @EventHandler
     public void onEntityDamageByEntityEvent(EntityDamageByEntityEvent event) {
         if (event.getDamager() instanceof Arrow) {
@@ -427,58 +278,6 @@ public final class TurretsMain extends JavaPlugin implements Listener {
         }
     }
 
-    private void mount(Player player, Location signPos) {
-        if (signPos.getBlock().getType() == Material.SIGN || signPos.getBlock().getType() == Material.SIGN_POST
-                || signPos.getBlock().getType() == Material.WALL_SIGN) {
-            if (Debug) {
-                logger.info("Sign detected");
-            }
-            Sign sign = (Sign) signPos.getBlock().getState();
-            if (onTurrets.contains(player)) {
-                sendMessage(player, "You May Only Have One Person Mounted Per Turret.");
-                if (Debug) {
-                    logger.info("1 player per turret");
-                }
-            } else {
-                if (Debug) {
-                    logger.info(player.getName() + " is now on a turret");
-                }
-                sign.setLine(2, player.getName());
-                sign.update();
-                onTurrets.add(player);
-                signPos.add(0.5, 0, 0.5);
-                signPos.setDirection(player.getEyeLocation().getDirection());
-                player.teleport(signPos);
-                player.setWalkSpeed(0);
-                player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, 1000000, 200));
-            }
-        } else {
-            logger.warning("Sign not found!");
-        }
-    }
-
-    private void demount(Player player, Location signPos) {
-        if (Debug) {
-            logger.info(player.getName() + " is being taken off a turret");
-        }
-        onTurrets.remove(player);
-        reloading.remove(player);
-        if (signPos.getBlock().getType() == Material.SIGN || signPos.getBlock().getType() == Material.SIGN_POST
-                || signPos.getBlock().getType() == Material.WALL_SIGN) {
-            if (Debug) {
-                logger.info("sign found and updated");
-            }
-            Sign sign = (Sign) signPos.getBlock().getState();
-            sign.setLine(2, "");
-            sign.update();
-        } else {
-            logger.warning("Sign not found!");
-        }
-        signPos.subtract(-0.5, 0, -0.5);
-        player.setWalkSpeed(0.2f);
-        player.removePotionEffect(PotionEffectType.JUMP);
-    }
-
     /**
      * When the player leaves the game, we need to handle cleanup and remove
      * them from all of the lists they might be on/turrets they are on
@@ -486,7 +285,7 @@ public final class TurretsMain extends JavaPlugin implements Listener {
      */
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent e) {
-        demount(e.getPlayer(), e.getPlayer().getLocation());
+        demountTurret(e.getPlayer(), e.getPlayer().getLocation());
     }
 
 
@@ -501,5 +300,5 @@ public final class TurretsMain extends JavaPlugin implements Listener {
         }
     }
 
-}
 
+}
