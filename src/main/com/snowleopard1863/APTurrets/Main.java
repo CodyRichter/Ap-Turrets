@@ -1,29 +1,14 @@
 package com.snowleopard1863.APTurrets;
 
 
-import com.sk89q.worldguard.bukkit.WGBukkit;
-import com.sk89q.worldguard.protection.managers.RegionManager;
 import net.countercraft.movecraft.craft.CraftManager;
 import net.milkbowl.vault.economy.Economy;
-import org.bukkit.*;
-import org.bukkit.block.Block;
-import org.bukkit.block.Sign;
+import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.World;
 import org.bukkit.entity.Arrow;
-import org.bukkit.entity.Boat;
-import org.bukkit.entity.Horse;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
-import org.bukkit.event.block.SignChangeEvent;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.entity.ProjectileHitEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
@@ -35,7 +20,8 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
-import static com.snowleopard1863.APTurrets.Util.*;
+import static com.snowleopard1863.APTurrets.Util.demountTurret;
+import static com.snowleopard1863.APTurrets.Util.setupConfig;
 
 public final class Main extends JavaPlugin implements Listener {
     private PluginDescriptionFile pdFile = getDescription();

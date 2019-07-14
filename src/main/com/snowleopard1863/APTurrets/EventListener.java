@@ -26,8 +26,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import static com.snowleopard1863.APTurrets.Main.*;
 import static com.snowleopard1863.APTurrets.Util.*;
-import static com.snowleopard1863.APTurrets.Util.demountTurret;
-import static com.snowleopard1863.APTurrets.Util.sendMessage;
 
 public class EventListener implements Listener {
 
