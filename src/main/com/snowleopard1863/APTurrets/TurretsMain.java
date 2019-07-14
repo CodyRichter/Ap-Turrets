@@ -47,11 +47,11 @@ import static com.snowleopard1863.APTurrets.Helpers.setupConfig;
 import static com.snowleopard1863.APTurrets.Helpers.takeAmmo;
 
 public final class TurretsMain extends JavaPlugin implements Listener {
-    PluginDescriptionFile pdFile = getDescription();
-    Logger logger = Logger.getLogger("Minecraft");
-    static List<Player> onTurrets = new ArrayList<>();
-    static List<Player> reloading = new ArrayList<>();
-    static List<Arrow> tracedArrows = new CopyOnWriteArrayList<>();
+    private PluginDescriptionFile pdFile = getDescription();
+    private Logger logger = Logger.getLogger("Minecraft");
+    private static List<Player> onTurrets = new ArrayList<>();
+    private static List<Player> reloading = new ArrayList<>();
+    private static List<Arrow> tracedArrows = new CopyOnWriteArrayList<>();
     static boolean Debug = false;
     static boolean takeFromInventory, takeFromChest, requireAmmo;
     static double costToPlace, damage, incendiaryChance, arrowVelocity;
