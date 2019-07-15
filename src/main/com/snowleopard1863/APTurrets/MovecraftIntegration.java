@@ -5,7 +5,6 @@ import net.countercraft.movecraft.utils.MovecraftLocation;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -95,7 +94,7 @@ public class MovecraftIntegration {
      * @param c      Craft which is being searched for ammo in containers
      * @return Ammo Successfully Taken
      */
-    static boolean takeAmmoFromShip(Player player, Craft c) {
+    static boolean takeAmmoFromShip(Craft c) {
             Inventory i = firstInventory(c, TURRET_AMMO, Material.CHEST, Material.TRAPPED_CHEST);
             if (i != null) {
                 i.removeItem(TURRET_AMMO);

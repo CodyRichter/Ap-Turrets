@@ -1,6 +1,8 @@
 package com.snowleopard1863.APTurrets;
 
 import net.countercraft.movecraft.craft.Craft;
+import net.minecraft.server.v1_12_R1.EntityPlayer;
+import net.minecraft.server.v1_12_R1.EntityTippedArrow;
 import net.minecraft.server.v1_12_R1.PacketPlayOutEntityDestroy;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -83,7 +85,7 @@ class Util {
                 {
                     Craft c = craftManager.getCraftByPlayer(player);
                     if (c != null) {
-                        return MovecraftIntegration.takeAmmoFromShip(player, c);
+                        return MovecraftIntegration.takeAmmoFromShip(c);
                     }
                 }
 
@@ -158,7 +160,8 @@ class Util {
             if (Debug) logger.info(player + " is out of ammo");
             return;
         }
-        Arrow arrow = player.launchProjectile(Arrow.class);
+
+        Arrow arrow = launchArrow(player);
         arrow.setShooter(player);
         arrow.setVelocity(player.getLocation().getDirection().multiply(arrowVelocity));
         arrow.setBounce(false);
@@ -185,6 +188,21 @@ class Util {
         world.playEffect(player.getLocation(), Effect.MOBSPAWNER_FLAMES, 0);
 
         if (Debug) logger.info("Mounted Gun Fired.");
+    }
+
+    /**
+     * Shoots an arrow with no gravity
+     * @param player Player shooting arrow
+     * @return Bukkit Arrow object
+     */
+    private static Arrow launchArrow(Player player) {
+        EntityPlayer ep = ((CraftPlayer) player).getHandle();
+        net.minecraft.server.v1_12_R1.World world = ep.getWorld();
+        EntityTippedArrow arrow = new EntityTippedArrow(world, ep);
+        arrow.setNoGravity(true);
+        world.addEntity(arrow);
+
+        return (Arrow) arrow.getBukkitEntity();
     }
 
     static void demountTurret(Player player, Location signPos) {
