@@ -89,9 +89,10 @@ public class MovecraftIntegration {
     }
 
     /**
-     * Takes Ammo From Player's Inventory For Firing The Turret.
+     * Takes Ammo From Player's Ship For Firing The Turret.
      *
-     * @param player Player Who Is Having Ammo Thier Ammo Taken
+     * @param player Player who is mounted on turret
+     * @param c      Craft which is being searched for ammo in containers
      * @return Ammo Successfully Taken
      */
     static boolean takeAmmoFromShip(Player player, Craft c) {
